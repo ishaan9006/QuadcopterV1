@@ -1,14 +1,23 @@
+#include <Servo.h>
+#include <MPU6050.h>
 #include <Wire.h>
+
+// Defining the motors
+Servo Motor1;
+Servo Motor2;
+Servo Motor3;
+Servo Motor4;
+
+#define CHANNEL1 1 
+#define CHANNEL2 2
+#define CHANNEL3 3 
+#define CHANNEL4 4
+#define CHANNEL5 5 
+#define CHANNEL6 6
 
 #define PITCH 0
 #define ROLL 1
 #define YAW 2
-
-// Defining motor pins
-#define Motor1 2
-#define Motor2 3
-#define Motor3 4
-#define Motor4 5
 
 float currTime = 0;
 float prevTime = 0;
@@ -18,64 +27,86 @@ double Kp[3] = {1, 1, 1};
 double Ki[3] = {1, 1, 1};
 double Kd[3] = {1, 1, 1};
 
+
+int channel[6] = {0, 0, 0, 0, 0, 0};
+
 double errors[3] = {0, 0, 0};     // errors in the order: PITCH ROLL YAW
 double prevErrors[3] = {0, 0, 0};     // Previous errors in the order: PITCH ROLL YAW
 double integrals[3] = {0, 0, 0};
 
+MPU6050 mpu;
 
 void setup() {
 
   Serial.begin(9600);   
+  Serial.println("Initializing MPU6050");
+  Wire.begin();
+  mpu.begin();
 
-  Wire.begin();                           //begin the wire comunication  
-  Wire.beginTransmission(0x68);           //begin, Send the slave adress (in this case 68)              
-  Wire.write(0x6B);                       //make the reset (place a 0 into the 6B register)
-  Wire.write(0x00);
-  Wire.endTransmission(true);             //end the transmission
+  Motor1.attach(5, 1000, 2000);
+  Motor2.attach(6, 1000, 2000);
+  Motor3.attach(9, 1000, 2000);
+  Motor4.attach(10, 1000, 2000);
   
-  Wire.beginTransmission(0x68);           //begin, Send the slave adress (in this case 68) 
-  Wire.write(0x1B);                       //We want to write to the GYRO_CONFIG register (1B hex)
-  Wire.write(0x10);                       //Set the register bits as 00010000 (1000dps full scale)
-  Wire.endTransmission(true);             //End the transmission with the gyro
 }
 
 void loop() {
   currTime = millis();
   timeError = currTime - prevTime;
 
-  double roll  = computePID(errors[ROLL], prevErrors[ROLL], integrals[ROLL], Kp[ROLL], Ki[ROLL], Kd[ROLL], timeError);
-  double yaw   = computePID(errors[YAW], prevErrors[YAW], integrals[YAW], Kp[YAW], Ki[YAW], Kd[YAW], timeError);
-  double pitch = computePID(errors[PITCH], prevErrors[PITCH], integrals[PITCH], Kp[PITCH], Ki[PITCH], Kd[PITCH], timeError);
+  getReceiverData();
+
+  double desiredRatePitch    = 0.15 * (channel[CHANNEL3] - 1500);
+  double desiredRateRoll     = 0.15 * (channel[CHANNEL4] - 1500);
+  double desiredRateYaw      = 0.15 * (channel[CHANNEL2] - 1500);
+  double desiredRateThrottle = channel[CHANNEL1];
+
+  // Read normalized values 
+  Vector normAccel = mpu.readNormalizeAccel();
+
+  // Calculate Pitch & Roll
+  int currPitch = -(atan2(normAccel.XAxis, sqrt(normAccel.YAxis*normAccel.YAxis + normAccel.ZAxis*normAccel.ZAxis))*180.0)/M_PI;
+  int currRoll = (atan2(normAccel.YAxis, normAccel.ZAxis)*180.0)/M_PI;
+  int currYaw = 0;
+
+
+  errors[0] = desiredRatePitch - currPitch;
+  errors[1] = desiredRateRoll - currRoll;
+  errors[2] = desiredRateYaw - currYaw;
+
+
+
+
+  // // Output
+  // Serial.print(" Pitch = ");
+  // Serial.print(pitch);
+  // Serial.print(" Roll = ");
+  // Serial.print(roll);
+  
+  // Serial.println();
+  
+  // delay(100);
+
+  double roll   = computePID(errors[ROLL], prevErrors[ROLL], integrals[ROLL], Kp[ROLL], Ki[ROLL], Kd[ROLL], timeError);
+  double yaw    = computePID(errors[YAW], prevErrors[YAW], integrals[YAW], Kp[YAW], Ki[YAW], Kd[YAW], timeError);
+  double pitch  = computePID(errors[PITCH], prevErrors[PITCH], integrals[PITCH], Kp[PITCH], Ki[PITCH], Kd[PITCH], timeError);
 
 
   integrals[PITCH] += errors[PITCH];
   integrals[ROLL]  += errors[ROLL];
   integrals[YAW]   += errors[YAW];
 
-  upDateMotorSpeed();
+  for(int i=0;i<3;i++) prevErrors[i] = errors[i];
+   
+
+
+
+  upDateMotorSpeed(desiredRateThrottle, roll, yaw, pitch);
   prevTime = currTime;
 }
 
 void getGyroSignals(){
-  Wire.beginTransmission(0x68);
-  Wire.write(0x1A);
-  Wire.write(0x05);
-  Wire.endTransmission();
-
-  Wire.beginTransmission(0x68);
-  Wire.write(0x1B);
-  Wire.write(0x08);
-  Wire.endTransmission();
-
-  Wire.beginTransmission(0x68);
-  Wire.write(0x43);
-  Wire.endTransmission();
-
-  Wire.requestFrom(0x68, 6);
-
-  int16_t GyroX = Wire.read()<<8 | Wire.read();
-  int16_t GyroY = Wire.read()<<8 | Wire.read();
-  int16_t GyroZ = Wire.read()<<8 | Wire.read();
+ 
 }
 
 double computePID(double error, double prev_error, double integral, double kp, double ki, double kd, double time_error){
@@ -86,11 +117,16 @@ double computePID(double error, double prev_error, double integral, double kp, d
   return (p + i + d);
 }
 
-void upDateMotorSpeed(){
-  // motor1 = thrust + yaw - pitch - roll
-  // motor2 = thrust - yaw - pitch + roll
-  // motor3 = thrust + yaw + pitch + roll
-  // motor4 = thrust - yaw + pitch - roll
+void upDateMotorSpeed(double thrust, double roll, double yaw, double pitch){
+  int motor1 = thrust + yaw - pitch - roll;
+  int motor2 = thrust - yaw - pitch + roll;
+  int motor3 = thrust + yaw + pitch + roll;
+  int motor4 = thrust - yaw + pitch - roll;
+
+  analogWrite(Motor1, motor1);
+  analogWrite(Motor2, motor2);
+  analogWrite(Motor3, motor3);
+  analogWrite(Motor4, motor4);
 }
 
 void getReceiverData(){
