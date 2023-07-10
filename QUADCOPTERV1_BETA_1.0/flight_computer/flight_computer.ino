@@ -31,7 +31,8 @@ double Kd[3] = {1, 1, 1};
 int channel[6] = {0, 0, 0, 0, 0, 0};
 
 double errors[3] = {0, 0, 0};     // errors in the order: PITCH ROLL YAW
-double prevErrors[3] = {0, 0, 0};     // Previous errors in the order: PITCH ROLL YAW
+double prevErrors[3] = {0, 0, 0};   // Previous errors in the order: PITCH ROLL YAW
+double currAngles[3] = {0, 0, 0}    // curr angles errors in the order: PITCH ROLL YAW
 double integrals[3] = {0, 0, 0};
 
 MPU6050 mpu;
@@ -56,36 +57,17 @@ void loop() {
 
   getReceiverData();
 
+  double desiredRateThrottle = channel[CHANNEL1];
   double desiredRatePitch    = 0.15 * (channel[CHANNEL3] - 1500);
   double desiredRateRoll     = 0.15 * (channel[CHANNEL4] - 1500);
   double desiredRateYaw      = 0.15 * (channel[CHANNEL2] - 1500);
-  double desiredRateThrottle = channel[CHANNEL1];
-
-  // Read normalized values 
-  Vector normAccel = mpu.readNormalizeAccel();
-
-  // Calculate Pitch & Roll
-  int currPitch = -(atan2(normAccel.XAxis, sqrt(normAccel.YAxis*normAccel.YAxis + normAccel.ZAxis*normAccel.ZAxis))*180.0)/M_PI;
-  int currRoll = (atan2(normAccel.YAxis, normAccel.ZAxis)*180.0)/M_PI;
-  int currYaw = 0;
 
 
-  errors[0] = desiredRatePitch - currPitch;
-  errors[1] = desiredRateRoll - currRoll;
-  errors[2] = desiredRateYaw - currYaw;
+  getMPUData();
 
-
-
-
-  // // Output
-  // Serial.print(" Pitch = ");
-  // Serial.print(pitch);
-  // Serial.print(" Roll = ");
-  // Serial.print(roll);
-  
-  // Serial.println();
-  
-  // delay(100);
+  errors[0] = desiredRatePitch - currAngles[0];
+  errors[1] = desiredRateRoll - currAngles[1];
+  errors[2] = desiredRateYaw - currAngles[2];
 
   double roll   = computePID(errors[ROLL], prevErrors[ROLL], integrals[ROLL], Kp[ROLL], Ki[ROLL], Kd[ROLL], timeError);
   double yaw    = computePID(errors[YAW], prevErrors[YAW], integrals[YAW], Kp[YAW], Ki[YAW], Kd[YAW], timeError);
@@ -98,15 +80,19 @@ void loop() {
 
   for(int i=0;i<3;i++) prevErrors[i] = errors[i];
    
-
-
-
   upDateMotorSpeed(desiredRateThrottle, roll, yaw, pitch);
   prevTime = currTime;
 }
 
-void getGyroSignals(){
- 
+void getMPUData(){
+  // Read normalized values 
+  Vector normAccel = mpu.readNormalizeAccel();
+
+  // Calculate Pitch & Roll
+  currAngles[0] = -(atan2(normAccel.XAxis, sqrt(normAccel.YAxis*normAccel.YAxis + normAccel.ZAxis*normAccel.ZAxis))*180.0)/M_PI;
+  currAngles[1] = (atan2(normAccel.YAxis, normAccel.ZAxis)*180.0)/M_PI;
+  currAngles[2] = 0;
+
 }
 
 double computePID(double error, double prev_error, double integral, double kp, double ki, double kd, double time_error){
