@@ -1,5 +1,11 @@
 #include <Wire.h>
 
+#define PITCH 0
+#define ROLL 1
+#define YAW 2
+
+
+
 // Defining motor pins
 #define Motor1 2
 #define Motor2 3
@@ -48,6 +54,28 @@ double computePID(){
 void upDateMotorSpeed(){
 
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
