@@ -40,15 +40,19 @@ void setup() {
 
 void loop() {
   currTime = millis();
-
   timeError = currTime - prevTime;
+
 
   upDateMotorSpeed();
   prevTime = currTime;
 }
 
-double computePID(){
+double computePID(double error, double prev_error, double integral, double kp, double ki, double kd){
+  double p = kp * error;
+  double i = ki * integral;
+  double d = kd * (error - prev_error);
 
+  return (p + i + d);
 }
 
 void upDateMotorSpeed(){
@@ -61,6 +65,13 @@ void upDateMotorSpeed(){
 
 
 
+double computePID(double error, double prev_error, double integral, double kp, double ki, double kd) {
+  double p = kp * error;
+  double d = kd * (error - prev_error);
+  double i = ki * integral;
+
+  return p + d + i;
+}
 
 
 
