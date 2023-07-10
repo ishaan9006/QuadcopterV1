@@ -4,8 +4,6 @@
 #define ROLL 1
 #define YAW 2
 
-
-
 // Defining motor pins
 #define Motor1 2
 #define Motor2 3
@@ -16,10 +14,13 @@ float currTime = 0;
 float prevTime = 0;
 float timeError = 0;
 
+double Kp[3] = {1, 1, 1};
+double Ki[3] = {1, 1, 1};
+double Kd[3] = {1, 1, 1};
 
-float Kp[3] = {1, 1, 1};
-float Ki[3] = {1, 1, 1};
-float Kd[3] = {1, 1, 1};
+double errors[3] = {0, 0, 0};     // errors in the order: PITCH ROLL YAW
+double prevErrors[3] = {0, 0, 0};     // Previous errors in the order: PITCH ROLL YAW
+double integrals[3] = {0, 0, 0};
 
 
 void setup() {
@@ -42,54 +43,57 @@ void loop() {
   currTime = millis();
   timeError = currTime - prevTime;
 
+  double roll  = computePID(errors[ROLL], prevErrors[ROLL], integrals[ROLL], Kp[ROLL], Ki[ROLL], Kd[ROLL], timeError);
+  double yaw   = computePID(errors[YAW], prevErrors[YAW], integrals[YAW], Kp[YAW], Ki[YAW], Kd[YAW], timeError);
+  double pitch = computePID(errors[PITCH], prevErrors[PITCH], integrals[PITCH], Kp[PITCH], Ki[PITCH], Kd[PITCH], timeError);
+
+
+  integrals[PITCH] += errors[PITCH];
+  integrals[ROLL]  += errors[ROLL];
+  integrals[YAW]   += errors[YAW];
 
   upDateMotorSpeed();
   prevTime = currTime;
 }
 
-double computePID(double error, double prev_error, double integral, double kp, double ki, double kd){
+void getGyroSignals(){
+  Wire.beginTransmission(0x68);
+  Wire.write(0x1A);
+  Wire.write(0x05);
+  Wire.endTransmission();
+
+  Wire.beginTransmission(0x68);
+  Wire.write(0x1B);
+  Wire.write(0x08);
+  Wire.endTransmission();
+
+  Wire.beginTransmission(0x68);
+  Wire.write(0x43);
+  Wire.endTransmission();
+
+  Wire.requestFrom(0x68, 6);
+
+  int16_t GyroX = Wire.read()<<8 | Wire.read();
+  int16_t GyroY = Wire.read()<<8 | Wire.read();
+  int16_t GyroZ = Wire.read()<<8 | Wire.read();
+}
+
+double computePID(double error, double prev_error, double integral, double kp, double ki, double kd, double time_error){
   double p = kp * error;
   double i = ki * integral;
-  double d = kd * (error - prev_error);
+  double d = kd * (error - prev_error)/time_error;
 
   return (p + i + d);
 }
 
 void upDateMotorSpeed(){
-
+  // motor1 = thrust + yaw - pitch - roll
+  // motor2 = thrust - yaw - pitch + roll
+  // motor3 = thrust + yaw + pitch + roll
+  // motor4 = thrust - yaw + pitch - roll
 }
 
+void getReceiverData(){
+  
 
-
-
-
-
-
-double computePID(double error, double prev_error, double integral, double kp, double ki, double kd) {
-  double p = kp * error;
-  double d = kd * (error - prev_error);
-  double i = ki * integral;
-
-  return p + d + i;
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
