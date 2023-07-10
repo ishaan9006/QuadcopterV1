@@ -33,7 +33,6 @@ int channel[6] = {0, 0, 0, 0, 0, 0};
 double errors[3] = {0, 0, 0};     // errors in the order: PITCH ROLL YAW
 double prevErrors[3] = {0, 0, 0};   // Previous errors in the order: PITCH ROLL YAW
 double currAngles[3] = {0, 0, 0}    // curr angles errors in the order: PITCH ROLL YAW
-double integrals[3] = {0, 0, 0};
 
 MPU6050 mpu;
 
@@ -42,7 +41,13 @@ void setup() {
   Serial.begin(9600);   
   Serial.println("Initializing MPU6050");
   Wire.begin();
-  mpu.begin();
+  while(!mpu.begin(MPU6050_SCALE_2000DPS, MPU6050_RANGE_2G))
+  {
+    Serial.println("Could not find a valid MPU6050 sensor, check wiring!");
+    delay(500);
+  }
+  mpu.calibrateGyro();
+  mpu.setThreshold(3);
 
   Motor1.attach(5, 1000, 2000);
   Motor2.attach(6, 1000, 2000);
@@ -69,14 +74,9 @@ void loop() {
   errors[1] = desiredRateRoll - currAngles[1];
   errors[2] = desiredRateYaw - currAngles[2];
 
-  double roll   = computePID(errors[ROLL], prevErrors[ROLL], integrals[ROLL], Kp[ROLL], Ki[ROLL], Kd[ROLL], timeError);
-  double yaw    = computePID(errors[YAW], prevErrors[YAW], integrals[YAW], Kp[YAW], Ki[YAW], Kd[YAW], timeError);
-  double pitch  = computePID(errors[PITCH], prevErrors[PITCH], integrals[PITCH], Kp[PITCH], Ki[PITCH], Kd[PITCH], timeError);
-
-
-  integrals[PITCH] += errors[PITCH];
-  integrals[ROLL]  += errors[ROLL];
-  integrals[YAW]   += errors[YAW];
+  double roll   = computePID(errors[ROLL], prevErrors[ROLL], Kp[ROLL], Ki[ROLL], Kd[ROLL], timeError);
+  double yaw    = computePID(errors[YAW], prevErrors[YAW], Kp[YAW], Ki[YAW], Kd[YAW], timeError);
+  double pitch  = computePID(errors[PITCH], prevErrors[PITCH], Kp[PITCH], Ki[PITCH], Kd[PITCH], timeError);
 
   for(int i=0;i<3;i++) prevErrors[i] = errors[i];
    
@@ -95,9 +95,9 @@ void getMPUData(){
 
 }
 
-double computePID(double error, double prev_error, double integral, double kp, double ki, double kd, double time_error){
+double computePID(double error, double prev_error, double kp, double ki, double kd, double time_error){
   double p = kp * error;
-  double i = ki * integral;
+  double i = ki * ((error + prev_error) * time_error)/2;
   double d = kd * (error - prev_error)/time_error;
 
   return (p + i + d);
