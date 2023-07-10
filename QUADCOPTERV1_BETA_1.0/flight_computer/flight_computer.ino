@@ -123,13 +123,12 @@ void upDateMotorSpeed(double thrust, double roll, double yaw, double pitch){
   int motor3 = thrust + yaw + pitch + roll;
   int motor4 = thrust - yaw + pitch - roll;
 
-  analogWrite(Motor1, motor1);
-  analogWrite(Motor2, motor2);
-  analogWrite(Motor3, motor3);
-  analogWrite(Motor4, motor4);
+  Motor1.writeMicroseconds(motor1);
+  Motor2.writeMicroseconds(motor2);
+  Motor3.writeMicroseconds(motor3);
+  Motor4.writeMicroseconds(motor4);
 }
 
 void getReceiverData(){
   
-
 }
