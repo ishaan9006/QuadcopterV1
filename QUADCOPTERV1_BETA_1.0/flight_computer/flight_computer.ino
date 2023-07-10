@@ -1,8 +1,15 @@
 #include <Wire.h>
 
+// Defining motor pins
+#define Motor1 2
+#define Motor2 3
+#define Motor3 4
+#define Motor4 5
 
 float currTime = 0;
 float prevTime = 0;
+float timeError = 0;
+
 
 float Kp[3] = {1, 1, 1};
 float Ki[3] = {1, 1, 1};
@@ -28,8 +35,22 @@ void setup() {
 void loop() {
   currTime = millis();
 
+  timeError = currTime - prevTime;
 
-
-
+  upDateMotorSpeed();
   prevTime = currTime;
 }
+
+double computePID(){
+
+}
+
+void upDateMotorSpeed(){
+
+}
+
+
+
+
+
+
