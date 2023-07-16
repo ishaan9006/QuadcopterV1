@@ -15,6 +15,13 @@ Servo Motor4;
 #define CHANNEL5 5 
 #define CHANNEL6 6
 
+#define channel_pin1 = 6;
+#define channel_pin2 = 7;
+#define channel_pin3 = 8;
+#define channel_pin4 = 9;
+#define channel_pin5 = 10;
+#define channel_pin6 = 11;
+
 #define PITCH 0
 #define ROLL 1
 #define YAW 2
@@ -32,7 +39,7 @@ int channel[6] = {0, 0, 0, 0, 0, 0};
 
 double errors[3] = {0, 0, 0};     // errors in the order: PITCH ROLL YAW
 double prevErrors[3] = {0, 0, 0};   // Previous errors in the order: PITCH ROLL YAW
-double currAngles[3] = {0, 0, 0}    // curr angles errors in the order: PITCH ROLL YAW
+double currAngles[3] = {0, 0, 0};    // curr angles errors in the order: PITCH ROLL YAW
 
 MPU6050 mpu;
 
@@ -54,9 +61,13 @@ void setup() {
   Motor3.attach(9, 1000, 2000);
   Motor4.attach(10, 1000, 2000);
   
+
+  pinMode(6, INPUT);
+  pinMode(9, INPUT);
 }
 
 void loop() {
+
   currTime = millis();
   timeError = currTime - prevTime;
 
@@ -66,7 +77,6 @@ void loop() {
   double desiredRatePitch    = 0.15 * (channel[CHANNEL3] - 1500);
   double desiredRateRoll     = 0.15 * (channel[CHANNEL4] - 1500);
   double desiredRateYaw      = 0.15 * (channel[CHANNEL2] - 1500);
-
 
   getMPUData();
 
@@ -108,7 +118,12 @@ void upDateMotorSpeed(double thrust, double roll, double yaw, double pitch){
   int motor2 = thrust - yaw - pitch + roll;
   int motor3 = thrust + yaw + pitch + roll;
   int motor4 = thrust - yaw + pitch - roll;
-
+  Serial.println(motor1);
+  Serial.println(motor2);
+  Serial.println(motor3);
+  Serial.println(motor4);
+  Serial.println("");
+  delay(1000);
   Motor1.writeMicroseconds(motor1);
   Motor2.writeMicroseconds(motor2);
   Motor3.writeMicroseconds(motor3);
@@ -116,5 +131,10 @@ void upDateMotorSpeed(double thrust, double roll, double yaw, double pitch){
 }
 
 void getReceiverData(){
-  
+  channel[0] = pulseIn(channel_pin1, HIGH);
+  channel[1] = pulseIn(channel_pin2, HIGH);
+  channel[2] = pulseIn(channel_pin3, HIGH);
+  channel[3] = pulseIn(channel_pin4, HIGH);
+  channel[4] = pulseIn(channel_pin5, HIGH);
+  channel[5] = pulseIn(channel_pin6, HIGH);
 }
