@@ -15,12 +15,12 @@ Servo Motor4;
 #define CHANNEL5 5 
 #define CHANNEL6 6
 
-#define channel_pin1 = 6;
-#define channel_pin2 = 7;
-#define channel_pin3 = 8;
-#define channel_pin4 = 9;
-#define channel_pin5 = 10;
-#define channel_pin6 = 11;
+#define channel_pin1  6
+#define channel_pin2  7
+#define channel_pin3  8
+#define channel_pin4  9
+#define channel_pin5  10
+#define channel_pin6  11
 
 #define PITCH 0
 #define ROLL 1
@@ -35,7 +35,7 @@ double Ki[3] = {1, 1, 1};
 double Kd[3] = {1, 1, 1};
 
 
-int channel[6] = {0, 0, 0, 0, 0, 0};
+int channel[6] = {0, 0, 0, 0, 0, 0};    // receiver data in the order ,Throttle, rot1, rot2
 
 double errors[3] = {0, 0, 0};     // errors in the order: PITCH ROLL YAW
 double prevErrors[3] = {0, 0, 0};   // Previous errors in the order: PITCH ROLL YAW
@@ -61,47 +61,52 @@ void setup() {
   Motor3.attach(9, 1000, 2000);
   Motor4.attach(10, 1000, 2000);
   
-
-  pinMode(6, INPUT);
-  pinMode(9, INPUT);
+   
 }
 
 void loop() {
-
   currTime = millis();
   timeError = currTime - prevTime;
 
-  getReceiverData();
+  // getReceiverData();
 
-  double desiredRateThrottle = channel[CHANNEL1];
-  double desiredRatePitch    = 0.15 * (channel[CHANNEL3] - 1500);
-  double desiredRateRoll     = 0.15 * (channel[CHANNEL4] - 1500);
-  double desiredRateYaw      = 0.15 * (channel[CHANNEL2] - 1500);
+  // double desiredRateThrottle = channel[CHANNEL1];
+  // double desiredRatePitch    = 0.15 * (channel[CHANNEL3] - 1500);
+  // double desiredRateRoll     = 0.15 * (channel[CHANNEL4] - 1500);
+  // double desiredRateYaw      = 0.15 * (channel[CHANNEL2] - 1500);
 
   getMPUData();
 
-  errors[0] = desiredRatePitch - currAngles[0];
-  errors[1] = desiredRateRoll - currAngles[1];
-  errors[2] = desiredRateYaw - currAngles[2];
+  for(int i=0;i<3;i++) {
+    Serial.print(currAngles[i]);
+    Serial.print(' ');
+    delay(100);
+  }
+  Serial.println("");
 
-  double roll   = computePID(errors[ROLL], prevErrors[ROLL], Kp[ROLL], Ki[ROLL], Kd[ROLL], timeError);
-  double yaw    = computePID(errors[YAW], prevErrors[YAW], Kp[YAW], Ki[YAW], Kd[YAW], timeError);
-  double pitch  = computePID(errors[PITCH], prevErrors[PITCH], Kp[PITCH], Ki[PITCH], Kd[PITCH], timeError);
+  // errors[0] = desiredRatePitch - currAngles[0];
+  // errors[1] = desiredRateRoll - currAngles[1];
+  // errors[2] = desiredRateYaw - currAngles[2];
 
-  for(int i=0;i<3;i++) prevErrors[i] = errors[i];
+  // double roll   = computePID(errors[ROLL], prevErrors[ROLL], Kp[ROLL], Ki[ROLL], Kd[ROLL], timeError);
+  // double yaw    = computePID(errors[YAW], prevErrors[YAW], Kp[YAW], Ki[YAW], Kd[YAW], timeError);
+  // double pitch  = computePID(errors[PITCH], prevErrors[PITCH], Kp[PITCH], Ki[PITCH], Kd[PITCH], timeError);
+
+  // for(int i=0;i<3;i++) prevErrors[i] = errors[i];
    
-  upDateMotorSpeed(desiredRateThrottle, roll, yaw, pitch);
+  // upDateMotorSpeed(desiredRateThrottle, roll, yaw, pitch);
   prevTime = currTime;
 }
 
 void getMPUData(){
   // Read normalized values 
-  Vector normAccel = mpu.readNormalizeAccel();
+  Vector normGyro = mpu.readNormalizeGyro();
 
   // Calculate Pitch & Roll
-  currAngles[0] = -(atan2(normAccel.XAxis, sqrt(normAccel.YAxis*normAccel.YAxis + normAccel.ZAxis*normAccel.ZAxis))*180.0)/M_PI;
-  currAngles[1] = (atan2(normAccel.YAxis, normAccel.ZAxis)*180.0)/M_PI;
-  currAngles[2] = 0;
+  currAngles[0] = -(atan2(normGyro.XAxis, sqrt(normGyro.YAxis*normGyro.YAxis + normGyro.ZAxis*normGyro.ZAxis))*180.0)/M_PI;
+  currAngles[1] = (atan2(normGyro.YAxis, normGyro.ZAxis)*180.0)/M_PI;
+  currAngles[2] = atan2(normGyro.YAxis, normGyro.XAxis);
+
 
 }
 
